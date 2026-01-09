@@ -1,0 +1,9 @@
+[package]
+name = "load-balancer"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+hyper = { version = "1.8.1", features = ["full"] }
+hyper-util = { version = "0.1.19", features = ["full"] }
+tokio = { version = "1.49.0", features = ["full"] }
