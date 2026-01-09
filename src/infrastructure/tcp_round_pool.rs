@@ -8,8 +8,8 @@ pub struct RoundTcpConnectionPool {
     available_connections: Vec<TcpStream>,
 }
 
-impl TcpConnectionPool for RoundTcpConnectionPool {
-    fn new(target_addr: &str, max_connections: usize) -> RoundTcpConnectionPool {
+impl RoundTcpConnectionPool {
+    pub fn new(target_addr: &str, max_connections: usize) -> RoundTcpConnectionPool {
         RoundTcpConnectionPool {
             target_addr: target_addr.to_string(),
             max_connections,
@@ -17,6 +17,9 @@ impl TcpConnectionPool for RoundTcpConnectionPool {
             available_connections: Vec::with_capacity(max_connections),
         }
     }
+}
+
+impl TcpConnectionPool for RoundTcpConnectionPool {
 
     async fn get_connection(&mut self) -> Option<TcpStream> {
         if let Some(stream) = self.available_connections.pop() {
