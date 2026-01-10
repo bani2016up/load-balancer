@@ -66,3 +66,31 @@ impl SmartTcpConnectionPool for SmartTcpConnPool {
         }
     }
 }
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn constructor_test() {
+        let pool = SmartTcpConnPool::new(vec![ConnString::new("127.0.0.1".to_string(), 8080)]);
+        assert_eq!(pool.available_backends.len(), 1);
+        assert_eq!(pool.backend_selector, 0);
+        assert_eq!(pool.user_session_map.len(), 0);
+        assert_eq!(pool.user_last_connection_time.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn get_connection_test() {
+        let mut pool = SmartTcpConnPool::new(vec![ConnString::new("127.0.0.1".to_string(), 8080)]);
+        let user_id = Uuid::new_v4();
+        let connection = pool.get_connection(user_id).await.unwrap();
+        assert_eq!(connection.peer_addr().unwrap().ip(), std::net::IpAddr::from([127, 0, 0, 1]));
+        assert_eq!(connection.peer_addr().unwrap().port(), 8080);
+    }
+
+
+
+}

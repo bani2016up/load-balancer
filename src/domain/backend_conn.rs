@@ -33,8 +33,36 @@ impl ConnString {
         format!("{}:{}", self.host, self.port)
     }
 
+    pub fn get_host(&self) -> &str {
+        &self.host
+    }
+
+    pub fn get_port(&self) -> u16 {
+        self.port
+    }
+
     pub fn get_uuid(&self) -> Uuid {
         self.uuid
+    }
+
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn constructor_test() {
+        let result = ConnString::new("ip".to_string(), 80);
+        assert_eq!(result.address(), "ip:80");
+    }
+
+    #[test]
+    fn constructor_from_string_test() {
+        let conn_string = "ip:80";
+        let result = ConnString::new_from_address(conn_string).expect("Test faild");
+        assert_eq!(result.address(), conn_string);
     }
 
 }
