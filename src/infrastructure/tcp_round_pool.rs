@@ -1,5 +1,5 @@
-use tokio::net::TcpStream;
 use crate::domain::tcp_conn_pool::TcpConnectionPool;
+use tokio::net::TcpStream;
 
 pub struct RoundTcpConnectionPool {
     target_addr: String,
@@ -20,7 +20,6 @@ impl RoundTcpConnectionPool {
 }
 
 impl TcpConnectionPool for RoundTcpConnectionPool {
-
     async fn get_connection(&mut self) -> Option<TcpStream> {
         if let Some(stream) = self.available_connections.pop() {
             return Some(stream);
@@ -43,5 +42,4 @@ impl TcpConnectionPool for RoundTcpConnectionPool {
     fn connection_closed(&mut self) {
         self.current_connections -= 1;
     }
-
 }

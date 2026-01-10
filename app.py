@@ -1,3 +1,4 @@
+import time
 from fastapi import FastAPI
 import asyncio
 
@@ -5,7 +6,7 @@ app = FastAPI()
 
 @app.get("/")
 async def root():
-    return {"message": f"Replica on port 3000"}
+    return {"message": f"time: {time.time()}"}
 
 
 async def app(scope, receive, send):

@@ -1,13 +1,11 @@
 use uuid::Uuid;
 
-
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Status {
     Created,
     Processing,
     Completed,
-    Failed
+    Failed,
 }
 
 #[derive(Debug, Clone)]
@@ -19,7 +17,6 @@ pub struct Request {
     time_taken: Option<f64>,
     bytes: Option<usize>,
 }
-
 
 impl Request {
     pub fn new(target: String, user_id: Uuid) -> Request {
@@ -56,10 +53,7 @@ impl Request {
     pub fn set_time_taken(&mut self, time_taken: f64) {
         self.time_taken = Some(time_taken);
     }
-
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -94,6 +88,4 @@ mod tests {
         request.set_time_taken(0.5);
         assert_eq!(request.time_taken, Some(0.5));
     }
-
-
 }

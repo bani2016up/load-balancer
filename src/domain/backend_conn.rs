@@ -7,7 +7,6 @@ pub struct ConnString {
     port: u16,
 }
 
-
 impl ConnString {
     pub fn new(host: String, port: u16) -> Self {
         ConnString {
@@ -44,9 +43,7 @@ impl ConnString {
     pub fn get_uuid(&self) -> Uuid {
         self.uuid
     }
-
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -64,5 +61,4 @@ mod tests {
         let result = ConnString::new_from_address(conn_string).expect("Test faild");
         assert_eq!(result.address(), conn_string);
     }
-
 }

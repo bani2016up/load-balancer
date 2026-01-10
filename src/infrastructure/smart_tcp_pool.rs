@@ -1,11 +1,10 @@
 use log::error;
-use uuid::Uuid;
 use std::collections::HashMap;
 use tokio::net::TcpStream;
+use uuid::Uuid;
 
-use crate::domain::tcp_conn_pool::SmartTcpConnectionPool;
 use crate::domain::backend_conn::ConnString;
-
+use crate::domain::tcp_conn_pool::SmartTcpConnectionPool;
 
 #[derive(Debug, Clone)]
 pub struct SmartTcpConnPool {
@@ -31,7 +30,8 @@ impl SmartTcpConnPool {
         } else {
             let backend_uuid = self.next_backend().get_uuid();
             self.user_session_map.insert(user_id, backend_uuid);
-            self.user_last_connection_time.insert(user_id, std::time::Instant::now());
+            self.user_last_connection_time
+                .insert(user_id, std::time::Instant::now());
             backend_uuid
         }
     }
@@ -52,7 +52,8 @@ impl SmartTcpConnectionPool for SmartTcpConnPool {
     async fn get_connection(&mut self, user_id: Uuid) -> Option<TcpStream> {
         let backend_uuid = self.get_or_assign_backend(user_id);
 
-        let conn_string = self.available_backends
+        let conn_string = self
+            .available_backends
             .iter()
             .find(|c| c.get_uuid() == backend_uuid)?
             .clone();
@@ -60,14 +61,16 @@ impl SmartTcpConnectionPool for SmartTcpConnPool {
         match TcpStream::connect(&conn_string.address()).await {
             Ok(stream) => Some(stream),
             Err(e) => {
-                error!("Failed to connect to backend {}: {}", conn_string.get_uuid(), e);
+                error!(
+                    "Failed to connect to backend {}: {}",
+                    conn_string.get_uuid(),
+                    e
+                );
                 None
             }
         }
     }
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -87,10 +90,10 @@ mod tests {
         let mut pool = SmartTcpConnPool::new(vec![ConnString::new("127.0.0.1".to_string(), 8080)]);
         let user_id = Uuid::new_v4();
         let connection = pool.get_connection(user_id).await.unwrap();
-        assert_eq!(connection.peer_addr().unwrap().ip(), std::net::IpAddr::from([127, 0, 0, 1]));
+        assert_eq!(
+            connection.peer_addr().unwrap().ip(),
+            std::net::IpAddr::from([127, 0, 0, 1])
+        );
         assert_eq!(connection.peer_addr().unwrap().port(), 8080);
     }
-
-
-
 }

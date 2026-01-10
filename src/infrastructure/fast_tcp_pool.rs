@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use tokio::sync::Mutex;
 use tokio::net::TcpStream;
+use tokio::sync::Mutex;
 
 use crate::domain::backend_conn::ConnString;
 use crate::domain::tcp_conn_pool::FastTcpPool;
@@ -16,12 +16,16 @@ pub struct ConnectionPool {
 }
 
 impl ConnectionPool {
-
     pub fn new(backends: Vec<ConnString>, max_pool_size: usize) -> ConnectionPool {
         ConnectionPool {
             backends: Arc::new(backends.clone()),
             current: Arc::new(AtomicUsize::new(0)),
-            pools: Arc::new(backends.iter().map(|_| Mutex::new(VecDeque::new())).collect()),
+            pools: Arc::new(
+                backends
+                    .iter()
+                    .map(|_| Mutex::new(VecDeque::new()))
+                    .collect(),
+            ),
             max_pool_size,
         }
     }
@@ -33,7 +37,6 @@ impl ConnectionPool {
         }
     }
 }
-
 
 impl FastTcpPool for ConnectionPool {
     async fn get_connection(&self, session_id: u64) -> Option<TcpStream> {
@@ -166,9 +169,7 @@ mod tests {
         let mut handles = vec![];
         for i in 0..10 {
             let pool_clone = pool.clone();
-            let handle = tokio::spawn(async move {
-                pool_clone.get_connection(i).await
-            });
+            let handle = tokio::spawn(async move { pool_clone.get_connection(i).await });
             handles.push(handle);
         }
 
