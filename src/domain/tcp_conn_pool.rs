@@ -8,5 +8,5 @@ pub trait TcpConnectionPool {
 
 
 pub trait SmartTcpConnectionPool {
-    async fn get_connection(&mut self, user_id: Uuid) -> Option<TcpStream>;
+    fn get_connection(&mut self, user_id: Uuid) -> impl std::future::Future<Output = Option<TcpStream>> + Send;
 }

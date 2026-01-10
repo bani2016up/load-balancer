@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Status {
     Created,
     Processing,
@@ -10,11 +10,12 @@ pub enum Status {
     Failed
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Request {
     uuid: Uuid,
     target: String,
     status: Status,
+    user_id: Uuid,
     time_taken: Option<f64>,
     bytes: Option<usize>,
 }
@@ -22,14 +23,19 @@ pub struct Request {
 
 
 impl Request {
-    pub fn new(target: String) -> Request {
+    pub fn new(target: String, user_id: Uuid) -> Request {
         Request {
             uuid: Uuid::new_v4(),
-            target,
+            target: target,
             status: Status::Created,
+            user_id: user_id,
             time_taken: None,
             bytes: None,
         }
+    }
+
+    pub fn get_user_id(&self) -> Uuid {
+        self.user_id
     }
 
     pub fn set_status(&mut self, status: Status) {
