@@ -1,7 +1,7 @@
 
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct RouterMap {
     map: std::collections::HashMap<String, String>,
 }
