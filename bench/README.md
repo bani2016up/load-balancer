@@ -1,11 +1,13 @@
 # TCP proxy benchmark
 
+See the [measured results](results.md) for the reference and optimized builds.
+
 Build the Go 1.22+ benchmark tool and the Rust release binary from the repository root. The runner uses Python 3.9+ and localhost ports 8080 and 3000–3019. Free those ports before starting.
 
 ```sh
 go build -o /tmp/tcp-bench bench/tcp.go
 cargo build --locked --release
-python3 bench/matrix.py --tool /tmp/tcp-bench --direct \
+python3 -B bench/matrix.py --tool /tmp/tcp-bench --direct \
   --proxy ./target/release/load-balancer --sockets --out /tmp/trials.jsonl
 ```
 
@@ -14,7 +16,7 @@ Pass `--match 'churn|persistent'` to select workloads. Pass multiple `--proxy` p
 Run an individual workload to adjust the offered rate, concurrency, deadlines, or payload size. The arguments after `--` go to the benchmark tool.
 
 ```sh
-python3 bench/run.py --tool /tmp/tcp-bench \
+python3 -B bench/run.py --tool /tmp/tcp-bench \
   --proxy ./target/release/load-balancer --log error --sockets -- \
   -rate 4000 -concurrency 1024 -warmup 3s -duration 10s -p99-budget 25ms
 /tmp/tcp-bench -help
