@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::{debug, error, info};
 use std::sync::{
     Arc,
     atomic::{AtomicU64, Ordering},
@@ -6,6 +6,7 @@ use std::sync::{
 use std::time::{Duration, Instant};
 use tokio::io;
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::Semaphore;
 use tokio::time::timeout;
 
 use crate::config::app::AppConfig;
@@ -15,20 +16,40 @@ pub async fn run_load_balancer(
     app_config: AppConfig,
     backends: RoundRobinBackends,
 ) -> io::Result<()> {
-    let listen_addr = app_config.listen_addr.unwrap();
-    let listener = TcpListener::bind(&listen_addr).await?;
+    let limit = app_config.max_active_connections;
+    if !(1..=Semaphore::MAX_PERMITS).contains(&limit) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "connection limit is out of range",
+        ));
+    }
+    let listen_addr = app_config.listen_addr.as_ref().unwrap();
+    let listener = TcpListener::bind(listen_addr).await?;
+    info!("Load balancer listening on {}", listen_addr);
+    serve(listener, backends, app_config).await
+}
+
+async fn serve(
+    listener: TcpListener,
+    backends: RoundRobinBackends,
+    app_config: AppConfig,
+) -> io::Result<()> {
     let backends = Arc::new(backends);
+    let permits = Arc::new(Semaphore::new(app_config.max_active_connections));
     let request_counter = AtomicU64::new(0);
     let connect_timeout = app_config.connect_timeout;
     let relay_timeout = Duration::from_secs(app_config.request_timout_sec);
 
-    info!("Load balancer listening on {}", listen_addr);
-
     loop {
-        let (incoming_stream, _) = listener.accept().await?;
+        let (incoming_stream, addr) = listener.accept().await?;
+        let Ok(permit) = Arc::clone(&permits).try_acquire_owned() else {
+            debug!("Rejected client {}: active connection limit reached", addr);
+            continue;
+        };
         let backends = Arc::clone(&backends);
         let request_id = request_counter.fetch_add(1, Ordering::Relaxed);
         tokio::spawn(async move {
+            let _permit = permit;
             if let Err(error) = handle_connection(
                 &backends,
                 incoming_stream,
@@ -111,6 +132,43 @@ mod tests {
             io::ErrorKind::ConnectionRefused | io::ErrorKind::TimedOut
         ));
         assert_eq!(client.read(&mut [0]).await.unwrap(), 0);
+    }
+
+    #[tokio::test]
+    async fn rejects_at_capacity_and_admits_after_disconnect() {
+        let backend = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let upstreams = backends(backend.local_addr().unwrap());
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut config = AppConfig::new();
+        config.max_active_connections = 1;
+        let proxy = tokio::spawn(serve(listener, upstreams, config));
+
+        timeout(Duration::from_secs(2), async {
+            let mut first = TcpStream::connect(addr).await.unwrap();
+            let (mut upstream, _) = backend.accept().await.unwrap();
+
+            let mut rejected = TcpStream::connect(addr).await.unwrap();
+            assert_eq!(rejected.read(&mut [0]).await.unwrap(), 0);
+
+            first.shutdown().await.unwrap();
+            assert_eq!(upstream.read(&mut [0]).await.unwrap(), 0);
+            upstream.shutdown().await.unwrap();
+            assert_eq!(first.read(&mut [0]).await.unwrap(), 0);
+
+            loop {
+                let _next = TcpStream::connect(addr).await.unwrap();
+                if timeout(Duration::from_millis(20), backend.accept())
+                    .await
+                    .is_ok()
+                {
+                    break;
+                }
+            }
+        })
+        .await
+        .unwrap();
+        proxy.abort();
     }
 
     #[tokio::test]

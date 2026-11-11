@@ -6,6 +6,7 @@ use crate::config::router_map::RouterMap;
 pub struct AppConfig {
     pub listen_addr: Option<String>,
     pub connect_timeout: Duration,
+    pub max_active_connections: usize,
     pub request_timout_sec: u64,
     pub router_map: Option<RouterMap>,
     is_built: bool,
@@ -16,6 +17,7 @@ impl AppConfig {
         AppConfig {
             listen_addr: None,
             connect_timeout: Duration::from_millis(250),
+            max_active_connections: 2048,
             request_timout_sec: 30,
             router_map: None,
             is_built: false,
