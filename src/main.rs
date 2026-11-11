@@ -7,7 +7,7 @@ use crate::config::app::AppConfig;
 use crate::config::router_map::RouterMap;
 use crate::core::load_balancer::run_load_balancer;
 use crate::domain::backend_conn::ConnString;
-use crate::infrastructure::fast_tcp_pool::ConnectionPool;
+use crate::infrastructure::round_robin_backends::RoundRobinBackends;
 
 #[tokio::main]
 async fn main() {
@@ -34,9 +34,9 @@ async fn main() {
         connections.push(ConnString::new(target_addr.to_string(), i));
     }
 
-    let pool = ConnectionPool::new(connections, replicas_count as usize);
+    let backends = RoundRobinBackends::new(connections);
 
-    run_load_balancer(app_config, pool)
+    run_load_balancer(app_config, backends)
         .await
         .expect("Failed to run load balancer");
 }

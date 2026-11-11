@@ -1,8 +1,11 @@
+use std::time::Duration;
+
 use crate::config::router_map::RouterMap;
 
 #[derive(Debug, Clone)]
 pub struct AppConfig {
     pub listen_addr: Option<String>,
+    pub connect_timeout: Duration,
     pub request_timout_sec: u64,
     pub router_map: Option<RouterMap>,
     is_built: bool,
@@ -12,6 +15,7 @@ impl AppConfig {
     pub fn new() -> AppConfig {
         AppConfig {
             listen_addr: None,
+            connect_timeout: Duration::from_millis(250),
             request_timout_sec: 30,
             router_map: None,
             is_built: false,

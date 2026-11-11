@@ -12,10 +12,3 @@ pub trait SmartTcpConnectionPool {
         user_id: Uuid,
     ) -> impl std::future::Future<Output = Option<TcpStream>> + Send;
 }
-
-pub trait FastTcpPool {
-    fn get_connection(
-        &self,
-        session_id: u64,
-    ) -> impl std::future::Future<Output = Option<TcpStream>> + Send;
-}
