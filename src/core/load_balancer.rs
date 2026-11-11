@@ -1,4 +1,4 @@
-use log::{debug, error, info};
+use log::{Level, debug, error, info, log_enabled, trace};
 use std::sync::{
     Arc,
     atomic::{AtomicU64, Ordering},
@@ -69,7 +69,7 @@ async fn handle_connection(
     connect_timeout: Duration,
     relay_timeout: Duration,
 ) -> io::Result<()> {
-    let start = Instant::now();
+    let start = log_enabled!(Level::Trace).then(Instant::now);
     let mut backend = backends.connect(connect_timeout).await?;
 
     let (sent, received) = timeout(
@@ -79,13 +79,15 @@ async fn handle_connection(
     .await
     .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "relay timed out"))??;
 
-    info!(
-        "Request {}: {}→{} bytes in {:?}",
-        request_id,
-        sent,
-        received,
-        start.elapsed()
-    );
+    if let Some(start) = start {
+        trace!(
+            "Connection {}: {}→{} bytes in {:?}",
+            request_id,
+            sent,
+            received,
+            start.elapsed()
+        );
+    }
     Ok(())
 }
 
