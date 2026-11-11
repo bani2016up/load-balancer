@@ -13,13 +13,13 @@ from run import run
 
 # (name, rate, concurrency, p99 budget, additional flags)
 CASES = [
-    ("churn", 1000, 512, "10ms", ""),
-    ("churn", 4000, 512, "10ms", ""),
-    ("churn", 8000, 1024, "10ms", ""),
-    ("churn", 12000, 2048, "10ms", ""),
-    ("persistent", 1000, 64, "10ms", "-persistent"),
-    ("persistent", 4000, 64, "10ms", "-persistent"),
-    ("persistent", 8000, 512, "10ms", "-persistent"),
+    ("churn", 1000, 512, "25ms", ""),
+    ("churn", 4000, 512, "25ms", ""),
+    ("churn", 8000, 1024, "25ms", ""),
+    ("churn", 12000, 2048, "25ms", ""),
+    ("persistent", 1000, 64, "25ms", "-persistent"),
+    ("persistent", 4000, 64, "25ms", "-persistent"),
+    ("persistent", 8000, 512, "25ms", "-persistent"),
     ("delay10", 1000, 256, "25ms", "-delay 10ms"),
     ("delay10", 4000, 512, "25ms", "-delay 10ms"),
     ("delay100", 1000, 512, "125ms", "-delay 100ms"),

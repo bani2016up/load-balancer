@@ -76,24 +76,29 @@ def stop(process):
 
 
 def block_connects(stack, count):
-    # Fill tiny local listen queues without accepting. Verify that overflow
-    # waits for the caller's deadline on this host before starting a trial.
+    # On macOS a bound, non-listening socket drops the SYN. Some other hosts
+    # instead time out when a listening socket's accept queue is full.
     for port in range(3000, 3000 + count):
+        address = ("127.0.0.1", port)
         listener = stack.enter_context(socket.socket())
         listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        listener.bind(("127.0.0.1", port))
-        listener.listen(1)
-        connected = 0
+        listener.bind(address)
+        try:
+            with socket.create_connection(address, timeout=0.2):
+                raise RuntimeError(f"port {port} accepted a dial without listening")
+        except TimeoutError:
+            continue
+        except ConnectionRefusedError:
+            listener.listen(1)
         for _ in range(128):
             client = stack.enter_context(socket.socket())
             client.settimeout(0.2)
             try:
-                client.connect(("127.0.0.1", port))
+                client.connect(address)
             except TimeoutError:
-                if connected:
-                    break
-                raise RuntimeError(f"port {port} timed out before filling the listen queue")
-            connected += 1
+                break
+            except (ConnectionRefusedError, ConnectionResetError) as error:
+                raise RuntimeError(f"port {port} did not blackhole connects") from error
         else:
             raise RuntimeError(f"port {port} did not blackhole connects")
 
@@ -179,7 +184,7 @@ def main():
     parser.add_argument("--sample-interval", type=float, default=1)
     parser.add_argument("--cooldown", type=float, default=2)
     parser.add_argument("--blackhole", type=int, choices=range(21), default=0,
-                        help="fill the listen queues of the first N backend ports")
+                        help="blackhole connects to the first N backend ports")
     parser.add_argument("--sockets", action="store_true", help="sample TCP descriptors with lsof")
     parser.add_argument("flags", nargs=argparse.REMAINDER, help="TCP benchmark flags after --")
     args = parser.parse_args()

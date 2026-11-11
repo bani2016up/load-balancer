@@ -24,12 +24,12 @@ python3 bench/run.py --tool /tmp/tcp-bench \
 
 The driver schedules arrivals independently of completion. Latency starts at the scheduled arrival, so dispatch delays count. A full driver concurrency window produces a `generator_limit` failure. Raise the window and check driver CPU and scheduler lateness before attributing a limit to the proxy.
 
-An operation succeeds when the client verifies the response ID, backend identity, and all expected bytes. The upload-only backend acknowledges after verifying the payload. Persistent operations also verify the backend stays the same. Connection rates count completed client dials, including those followed by failed operations. TCP closes and resets are reported as observed by the client.
+An operation succeeds when the client verifies the response ID, backend identity, and all expected bytes. The upload-only backend acknowledges after verifying the payload. Persistent operations also verify the backend stays the same. Connection rates count completed client dials, including those followed by failed operations. For connection churn, the backend sends the first FIN and the client verifies EOF. This reduces driver port exhaustion during repeated local runs. TCP closes and resets are reported as observed by the client.
 
 The runner records each phase's throughput, success latency percentiles, failures, and distribution. Sampled process RSS and CPU time include the backend, driver, and proxy. With `--sockets`, samples also include open TCP descriptors, including listeners. Per-backend samples list accepted, active, and peak active connections in that order. RSS excludes kernel socket memory.
 
 The matrix declares a p99 latency budget for each workload and a default failure budget of 0.1%. Treat a rate as sustainable only when repetitions meet both budgets and resource use stabilizes. Use the highest passing *tested* rate. Extend the sweep if the last rate passes or if the driver limits the result.
 
-The overload case transitions from warmup to measurement, overload, and recovery on one timeline. Compare RSS and socket counts during each phase and after cooldown. The blackhole case fills a local listen queue and verifies that new dials time out before measuring. It depends on the host's TCP backlog behavior.
+The overload case transitions from warmup to measurement, overload, and recovery on one timeline. Compare RSS and socket counts during each phase and after cooldown. The blackhole case verifies that new dials time out against a bound socket or a full listen queue before measuring. It depends on the host's TCP behavior.
 
 Keep the host otherwise idle and report trial variation. Direct and proxied traffic share the host's CPU and TCP stack with the driver. High-rate connection churn can exhaust the local ephemeral port range. A local saturation point includes these effects.

@@ -113,40 +113,47 @@ func relay(conn net.Conn, port int, slowBackend bool, payload []byte) {
 			time.Sleep(wait)
 		}
 		binary.BigEndian.PutUint16(header[10:12], uint16(port))
-		if *direction != "both" {
-			if !transferOneWay(conn, header, length, payload, &body) {
-				return
-			}
-			continue
+		var transferred bool
+		if *direction == "both" {
+			transferred = echo(conn, header, length, &body)
+		} else {
+			transferred = transferOneWay(conn, header, length, payload, &body)
 		}
-		if length <= 1024 {
-			var packet [headerLen + 1024]byte
-			copy(packet[:], header[:])
-			if _, err := io.ReadFull(conn, packet[headerLen:headerLen+length]); err != nil {
-				return
-			}
-			if _, err := conn.Write(packet[:headerLen+length]); err != nil {
-				return
-			}
-			continue
-		}
-		if len(body) < min(length, 32768) {
-			body = make([]byte, min(length, 32768))
-		}
-		if _, err := conn.Write(header[:]); err != nil {
+		if !transferred || !*persistent {
+			// For churn, the backend sends the first FIN. The driver's ephemeral
+			// ports then avoid TIME_WAIT and can be used for later trials.
 			return
 		}
-		for remaining := length; remaining > 0; {
-			chunk := body[:min(remaining, len(body))]
-			if _, err := io.ReadFull(conn, chunk); err != nil {
-				return
-			}
-			if _, err := conn.Write(chunk); err != nil {
-				return
-			}
-			remaining -= len(chunk)
-		}
 	}
+}
+
+func echo(conn net.Conn, header [headerLen]byte, length int, body *[]byte) bool {
+	if length <= 1024 {
+		var packet [headerLen + 1024]byte
+		copy(packet[:], header[:])
+		if _, err := io.ReadFull(conn, packet[headerLen:headerLen+length]); err != nil {
+			return false
+		}
+		_, err := conn.Write(packet[:headerLen+length])
+		return err == nil
+	}
+	if len(*body) < min(length, 32768) {
+		*body = make([]byte, min(length, 32768))
+	}
+	if _, err := conn.Write(header[:]); err != nil {
+		return false
+	}
+	for remaining := length; remaining > 0; {
+		chunk := (*body)[:min(remaining, len(*body))]
+		if _, err := io.ReadFull(conn, chunk); err != nil {
+			return false
+		}
+		if _, err := conn.Write(chunk); err != nil {
+			return false
+		}
+		remaining -= len(chunk)
+	}
+	return true
 }
 
 func transferOneWay(conn net.Conn, header [headerLen]byte, length int, payload []byte, body *[]byte) bool {
@@ -287,6 +294,16 @@ func (c *client) receive(header [headerLen]byte, port int, newConn bool, payload
 	}
 	if *direction != "upload" {
 		if err := c.verifyPayload(payload); err != nil {
+			return 0, newConn, err
+		}
+	}
+	if !*persistent {
+		var extra [1]byte
+		n, err := c.conn.Read(extra[:])
+		if n != 0 || err == nil {
+			return 0, newConn, invalidResponse
+		}
+		if err != io.EOF {
 			return 0, newConn, err
 		}
 	}
