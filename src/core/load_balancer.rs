@@ -36,7 +36,11 @@ async fn serve(listener: TcpListener, backends: Backends, app_config: AppConfig)
     loop {
         let (incoming_stream, addr) = listener.accept().await?;
         let Ok(permit) = Arc::clone(&permits).try_acquire_owned() else {
-            debug!("Rejected client {}: active connection limit reached", addr);
+            debug!(
+                target: "load_balancer::admission",
+                "Rejected client {}: active connection limit reached",
+                addr
+            );
             continue;
         };
         let backends = Arc::clone(&backends);

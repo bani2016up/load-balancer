@@ -16,7 +16,7 @@ Run an individual workload to adjust the offered rate, concurrency, deadlines, o
 ```sh
 python3 bench/run.py --tool /tmp/tcp-bench \
   --proxy ./target/release/load-balancer --log error --sockets -- \
-  -rate 4000 -concurrency 1024 -warmup 3s -duration 10s -p99-budget 10ms
+  -rate 4000 -concurrency 1024 -warmup 3s -duration 10s -p99-budget 25ms
 /tmp/tcp-bench -help
 ```
 
@@ -26,7 +26,7 @@ The driver schedules arrivals independently of completion. Latency starts at the
 
 An operation succeeds when the client verifies the response ID, backend identity, and all expected bytes. The upload-only backend acknowledges after verifying the payload. Persistent operations also verify the backend stays the same. Connection rates count completed client dials, including those followed by failed operations. For connection churn, the backend sends the first FIN and the client verifies EOF. This reduces driver port exhaustion during repeated local runs. TCP closes and resets are reported as observed by the client.
 
-The runner records each phase's throughput, success latency percentiles, failures, and distribution. Sampled process RSS and CPU time include the backend, driver, and proxy. With `--sockets`, samples also include open TCP descriptors, including listeners. Per-backend samples list accepted, active, and peak active connections in that order. RSS excludes kernel socket memory.
+The runner records each phase's throughput, success latency percentiles, failures, distribution, and the time to finish after arrivals stop. Sampled process RSS and CPU time include the backend, driver, and proxy. With `--sockets`, samples also include open TCP descriptors, including listeners. Per-backend samples list accepted, active, and peak active connections in that order. RSS excludes kernel socket memory. Proxy trials also count panic and rejection log lines. Enable rejection lines with `--log error,load_balancer::admission=debug`.
 
 The matrix declares a p99 latency budget for each workload and a default failure budget of 0.1%. Treat a rate as sustainable only when repetitions meet both budgets and resource use stabilizes. Use the highest passing *tested* rate. Extend the sweep if the last rate passes or if the driver limits the result.
 

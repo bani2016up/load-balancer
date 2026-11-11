@@ -415,7 +415,10 @@ func report(name string, duration time.Duration, rate int, results []result) {
 	backends := make(map[int]int)
 	errors := make(map[string]int)
 	connections := 0
-	for _, result := range results {
+	var drain time.Duration
+	for i, result := range results {
+		finished := time.Duration(i)*time.Second/time.Duration(rate) + max(result.late, result.latency)
+		drain = max(drain, finished-duration)
 		lateness = append(lateness, result.late)
 		if result.newConn {
 			connections++
@@ -442,6 +445,7 @@ func report(name string, duration time.Duration, rate int, results []result) {
 		"p50_ms":              percentile(latencies, .5), "p95_ms": percentile(latencies, .95),
 		"p99_ms": percentile(latencies, .99), "p999_ms": percentile(latencies, .999),
 		"scheduler_p99_ms": percentile(lateness, .99), "successful_by_backend": backends, "errors": errors,
+		"drain_ms": float64(drain) / float64(time.Millisecond),
 		"meets_budget": successes > 0 && errors["corrupt_response"] == 0 &&
 			percentile(latencies, .99) <= float64(*p99Budget)/float64(time.Millisecond) &&
 			float64(len(results)-successes)/float64(len(results)) <= *errorBudget,

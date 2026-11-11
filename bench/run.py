@@ -151,7 +151,7 @@ def run(args, flags):
             if args.cooldown > 0:
                 time.sleep(args.cooldown)
                 samples.append(process_stats(processes, start, lsof))
-            return {
+            report = {
                 "proxy": args.proxy,
                 "rust_log": args.log,
                 "flags": flags,
@@ -162,6 +162,14 @@ def run(args, flags):
                     json.loads(line) for line in stats.read_text().splitlines()[1:] if line.endswith("}")
                 ],
             }
+            if args.proxy:
+                with logs["proxy"].open("rb") as stream:
+                    counts = {"panics": 0, "rejection_lines": 0}
+                    for line in stream:
+                        counts["panics"] += b"panicked at" in line
+                        counts["rejection_lines"] += b"active connection limit reached" in line
+                report["proxy_log_counts"] = counts
+            return report
         except (RuntimeError, OSError) as error:
             details = []
             for name, path in logs.items():

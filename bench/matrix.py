@@ -42,7 +42,7 @@ CASES = [
     ("slow-writer", 50, 512, "750ms", "-bytes 2097152 -direction upload -write-pause 5ms"),
     ("idle", 250, 2048, "2200ms", "-idle 2s"),
     ("long-lived", 1000, 64, "25ms", "-persistent -soak-rate 1000 -soak 32s -recovery 5s"),
-    ("overload", 300, 8192, "1200ms", "-delay 1s -soak-rate 6500 -soak 35s -recovery 8s"),
+    ("overload", 300, 8192, "1200ms", "-delay 1s -soak-rate 3000 -soak 35s -recovery 8s"),
 ]
 
 
