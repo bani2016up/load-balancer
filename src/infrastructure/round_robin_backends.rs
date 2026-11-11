@@ -1,16 +1,15 @@
 use std::io;
+use std::net::SocketAddr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::net::TcpStream;
 
-use crate::domain::backend_conn::ConnString;
-
 pub struct RoundRobinBackends {
-    backends: Vec<ConnString>,
+    backends: Vec<SocketAddr>,
     current: AtomicUsize,
 }
 
 impl RoundRobinBackends {
-    pub fn new(backends: Vec<ConnString>) -> Self {
+    pub fn new(backends: Vec<SocketAddr>) -> Self {
         assert!(!backends.is_empty(), "at least one backend is required");
         Self {
             backends,
@@ -20,7 +19,7 @@ impl RoundRobinBackends {
 
     pub async fn connect(&self) -> io::Result<TcpStream> {
         let index = self.current.fetch_add(1, Ordering::Relaxed) % self.backends.len();
-        TcpStream::connect(self.backends[index].address()).await
+        TcpStream::connect(self.backends[index]).await
     }
 }
 
@@ -35,12 +34,7 @@ mod tests {
         let second = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let first_addr = first.local_addr().unwrap();
         let second_addr = second.local_addr().unwrap();
-        let backends = RoundRobinBackends::new(
-            [first_addr, second_addr]
-                .into_iter()
-                .map(|addr| ConnString::new(addr.ip().to_string(), addr.port()))
-                .collect(),
-        );
+        let backends = RoundRobinBackends::new(vec![first_addr, second_addr]);
 
         let first_conn = backends.connect().await.unwrap();
         let second_conn = backends.connect().await.unwrap();

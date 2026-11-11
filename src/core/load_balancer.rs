@@ -76,12 +76,11 @@ async fn handle_connection(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::backend_conn::ConnString;
     use std::net::SocketAddr;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     fn backends(addr: SocketAddr) -> RoundRobinBackends {
-        RoundRobinBackends::new(vec![ConnString::new(addr.ip().to_string(), addr.port())])
+        RoundRobinBackends::new(vec![addr])
     }
 
     async fn client_pair() -> (TcpStream, TcpStream) {
