@@ -6,7 +6,7 @@ mod infrastructure;
 use crate::config::app::AppConfig;
 use crate::config::router_map::RouterMap;
 use crate::core::load_balancer::run_load_balancer;
-use crate::infrastructure::round_robin_backends::RoundRobinBackends;
+use crate::infrastructure::backends::Backends;
 use std::io;
 use std::net::{Ipv4Addr, SocketAddr};
 
@@ -43,7 +43,7 @@ async fn main() -> io::Result<()> {
     let addresses = (replicas_start..(replicas_start + replicas_count))
         .map(|port| SocketAddr::from((target_addr, port)))
         .collect();
-    let backends = RoundRobinBackends::new(addresses);
+    let backends = Backends::new(addresses);
 
     run_load_balancer(app_config, backends).await
 }

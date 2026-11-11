@@ -10,12 +10,9 @@ use tokio::sync::Semaphore;
 use tokio::time::timeout;
 
 use crate::config::app::AppConfig;
-use crate::infrastructure::round_robin_backends::RoundRobinBackends;
+use crate::infrastructure::backends::Backends;
 
-pub async fn run_load_balancer(
-    app_config: AppConfig,
-    backends: RoundRobinBackends,
-) -> io::Result<()> {
+pub async fn run_load_balancer(app_config: AppConfig, backends: Backends) -> io::Result<()> {
     let limit = app_config.max_active_connections;
     if !(1..=Semaphore::MAX_PERMITS).contains(&limit) {
         return Err(io::Error::new(
@@ -29,11 +26,7 @@ pub async fn run_load_balancer(
     serve(listener, backends, app_config).await
 }
 
-async fn serve(
-    listener: TcpListener,
-    backends: RoundRobinBackends,
-    app_config: AppConfig,
-) -> io::Result<()> {
+async fn serve(listener: TcpListener, backends: Backends, app_config: AppConfig) -> io::Result<()> {
     let backends = Arc::new(backends);
     let permits = Arc::new(Semaphore::new(app_config.max_active_connections));
     let request_counter = AtomicU64::new(0);
@@ -66,20 +59,18 @@ async fn serve(
 }
 
 async fn handle_connection(
-    backends: &RoundRobinBackends,
+    backends: &Backends,
     mut incoming_stream: TcpStream,
     request_id: u64,
     connect_timeout: Duration,
     relay_timeout: Duration,
 ) -> io::Result<()> {
     let start = Instant::now();
-    let mut backend = timeout(connect_timeout, backends.connect())
-        .await
-        .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "backend connect timed out"))??;
+    let mut backend = backends.connect(connect_timeout).await?;
 
     let (sent, received) = timeout(
         relay_timeout,
-        io::copy_bidirectional(&mut incoming_stream, &mut backend),
+        io::copy_bidirectional(&mut incoming_stream, &mut backend.stream),
     )
     .await
     .map_err(|_| io::Error::new(io::ErrorKind::TimedOut, "relay timed out"))??;
@@ -100,8 +91,8 @@ mod tests {
     use std::net::SocketAddr;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    fn backends(addr: SocketAddr) -> RoundRobinBackends {
-        RoundRobinBackends::new(vec![addr])
+    fn backends(addr: SocketAddr) -> Backends {
+        Backends::new(vec![addr])
     }
 
     async fn client_pair() -> (TcpStream, TcpStream) {
